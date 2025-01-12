@@ -30,7 +30,8 @@ public class ВыборЮнитов : MonoBehaviour
     
     private void Start()
     {
-        cam=Camera.main; 
+        cam=Camera.main;
+        unitsSelected.Clear();
     }
 
     private void Update()
@@ -81,7 +82,7 @@ public class ВыборЮнитов : MonoBehaviour
             }
         }
 
-        // Attack Target
+        
         if (unitsSelected.Count > 0 && AtLeastOneUnit(unitsSelected))
         {
             RaycastHit hit;
@@ -89,7 +90,7 @@ public class ВыборЮнитов : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, attackable))
             {
-                Debug.Log("ЫЫЫ");
+                
 
 
                 attackCursorVisible = true;

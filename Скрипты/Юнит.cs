@@ -21,7 +21,7 @@ public class Юнит : MonoBehaviour,IDamageable
 
     private void OnDestroy()
     {
-        ВыборЮнитов.Instance.allUnitsList.Remove(gameObject);
+        ВыборЮнитов.Instance.unitsSelected.Remove(gameObject);
     }
     
     private void UpdateHealthUI()
@@ -31,6 +31,8 @@ public class Юнит : MonoBehaviour,IDamageable
         if (unitHealth<=0)
         {
             Destroy(gameObject);
+            ВыборЮнитов.Instance.allUnitsList.Remove(gameObject);
+            ВыборЮнитов.Instance.unitsSelected.Remove(gameObject);
         }
     
     }

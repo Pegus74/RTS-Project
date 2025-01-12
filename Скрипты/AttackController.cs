@@ -22,7 +22,7 @@ public class AttackController  : MonoBehaviour
         {
             targetToAttack = other.transform;
         }
-        if (isEnemy && other.CompareTag("Ally") && targetToAttack == null)
+        if (isEnemy && (other.CompareTag("Ally")|| other.CompareTag("AllyBuilding")) && targetToAttack == null)
         {
             targetToAttack = other.transform;
         }
@@ -34,7 +34,7 @@ public class AttackController  : MonoBehaviour
             targetToAttack = other.transform;
         }
 
-        if (isEnemy && other.CompareTag("Ally") && targetToAttack == null)
+        if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
         {
             targetToAttack = other.transform;
         }
@@ -48,7 +48,7 @@ public class AttackController  : MonoBehaviour
 
         }
 
-        if (other.CompareTag("Ally") && targetToAttack != null)
+        if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
         {
             targetToAttack = null;
 

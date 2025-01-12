@@ -25,6 +25,7 @@ public class ResourceManager : MonoBehaviour
     public event Action OnResourceChanged;
     public event Action OnBuildingsChanged;
     public List<BuildingType> allExistingBuildings;
+    public PlacementSystem placementSystem;
 
     public enum ResourcesType
     {
@@ -38,7 +39,7 @@ public class ResourceManager : MonoBehaviour
     {
         return gold;
     }
-    public void UpdateBuildingChanged(BuildingType buildingType,bool isNew)
+    public void UpdateBuildingChanged(BuildingType buildingType,bool isNew,Vector3 position)
     {
         if (isNew)
         {
@@ -47,6 +48,7 @@ public class ResourceManager : MonoBehaviour
         }
         else
         {
+            placementSystem.RemovePlacementData(position);
             allExistingBuildings.Remove(buildingType);
         }
         OnBuildingsChanged?.Invoke();
