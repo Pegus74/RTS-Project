@@ -3,62 +3,218 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 
-public class Constructable : MonoBehaviour,IDamageable
+[RequireComponent(typeof(BoxCollider))]
+public class Constructable : MonoBehaviour, IDamageable
 {
+    [Header("Base Settings")]
+    [SerializeField] private float constMaxHealth = 100f;
+    [SerializeField] private HealthTracker healthTracker;
+    [SerializeField] private bool isEnemy = false;
+    [SerializeField] private BuildingType buildingType;
+    [SerializeField] private Vector3 buildPosition;
+    private BoxCollider boxCollider;
+
+    [Header("Construction Settings")]
+    [SerializeField] private float constructionTime = 3f;
+    [SerializeField] private GameObject constructionModel;
+    [SerializeField] private GameObject finishedModel;
+    [SerializeField] private float constructionRadius = 5f;
+    [SerializeField] private int workersRequired = 1;
+
+    [Header("Collider Settings")]
+    [SerializeField] private SphereCollider constructionZone;
+
+    private NavMeshObstacle obstacle;
     private float constHealth;
-    public float constMaxHealth;
-    public HealthTracker healthTracker;
-    public bool isEnemy = false;
-    NavMeshObstacle obstacle;
-    public BuildingType buildingType;
-    public Vector3 buildPosition;
-    public BoxCollider boxCollider;
+    private List<Worker> nearbyWorkers = new List<Worker>();
+    private bool constructionInProgress = false;
+    public float constructionProgress = 0f;
 
+    public bool IsConstructed { get; private set; }
+    public float ConstructionRadius => constructionRadius;
+    public event System.Action OnConstructionCompleted;
 
-    private void Start()
+    private void Awake()
     {
-        constHealth = constMaxHealth;
+        obstacle = GetComponentInChildren<NavMeshObstacle>();
         boxCollider = GetComponent<BoxCollider>();
-        UpdateHealthUI();
 
-    }
-    private void UpdateHealthUI()
-    {
-        healthTracker.UpdateSliderValue(constHealth, constMaxHealth);
-        if (constHealth <= 0) 
+        // Инициализация коллайдера
+        constructionZone = GetComponent<SphereCollider>();
+        if (constructionZone == null)
         {
-            Destroy(gameObject);
-            if (isEnemy == false)
+            constructionZone = gameObject.AddComponent<SphereCollider>();
+        }
+        constructionZone.radius = constructionRadius;
+        constructionZone.isTrigger = true;
+        constructionZone.enabled = true;
+
+        InitializeConstruction();
+    }
+    private void InitializeConstruction()
+    {
+        if (constructionModel != null) constructionModel.SetActive(true);
+        if (finishedModel != null) finishedModel.SetActive(false);
+
+        if (obstacle != null) obstacle.enabled = false;
+        if (boxCollider != null) boxCollider.enabled = false;
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        Debug.Log($"Worker entered: {other.name}");
+        if (!other.name.Contains("Worker")) return;
+
+        Worker worker = other.GetComponent<Worker>();
+        if (worker != null && worker.IsAvailableForConstruction())
+        {
+            worker.StartHelpingConstruction(this);
+            nearbyWorkers.Add(worker);
+
+            if (nearbyWorkers.Count >= workersRequired && !constructionInProgress)
             {
-                ResourceManager.Instance.UpdateBuildingChanged(buildingType, false, buildPosition);
+                StartConstruction();
             }
         }
     }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (!other.CompareTag("Worker")) return;
+
+        Worker worker = other.GetComponent<Worker>();
+        if (worker != null && nearbyWorkers.Contains(worker))
+        {
+            worker.StopHelpingConstruction();
+            nearbyWorkers.Remove(worker);
+
+            if (nearbyWorkers.Count < workersRequired && constructionInProgress)
+            {
+                PauseConstruction();
+            }
+        }
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        Gizmos.color = new Color(1, 0.5f, 0, 0.3f);
+        Gizmos.DrawSphere(transform.position, constructionRadius);
+    }
+
+    public void StartConstruction()
+    {
+        if (constructionInProgress) return;
+
+        constructionProgress = 0f;
+        constructionInProgress = true;
+        IsConstructed = false;
+
+        if (constructionModel != null) constructionModel.SetActive(true);
+        if (finishedModel != null) finishedModel.SetActive(false);
+
+        StartCoroutine(ConstructionProcess());
+    }
+
+    private void PauseConstruction()
+    {
+        constructionInProgress = false;
+        StopCoroutine(nameof(ConstructionProcess));
+    }
+
+    public IEnumerator ConstructionProcess()
+    {
+        while (constructionProgress < constructionTime)
+        {
+            if (nearbyWorkers.Count >= workersRequired)
+            {
+                constructionProgress += Time.deltaTime;
+                UpdateConstructionProgress(constructionProgress / constructionTime);
+            }
+            yield return null;
+        }
+        CompleteConstruction();
+
+    }
+
+
+    private void UpdateConstructionProgress(float progress)
+    {
+        // Можно добавить визуализацию прогресса
+    }
+
+    private void CompleteConstruction()
+    {
+        IsConstructed = true;
+        constructionInProgress = false;
+
+        if (constructionModel != null) constructionModel.SetActive(false);
+        if (finishedModel != null) finishedModel.SetActive(true);
+
+        if (boxCollider != null) boxCollider.enabled = true;
+        if (obstacle != null) obstacle.enabled = true;
+
+        if (isEnemy) gameObject.tag = "Enemy";
+
+        HandleBuildingFunctionality();
+
+        // Освобождаем рабочих
+        foreach (var worker in nearbyWorkers)
+        {
+            worker.StopHelpingConstruction();
+        }
+        nearbyWorkers.Clear();
+
+        OnConstructionCompleted?.Invoke();
+    }
+
+    private void HandleBuildingFunctionality()
+    {
+       // switch (buildingType)
+        //{
+       //     case BuildingType.Castle:
+      //          SpawnWorker();
+      //          break;
+      //  }
+    }
+
+    private void SpawnWorker()
+    {
+        GameObject workerPrefab = Resources.Load<GameObject>("Worker");
+        if (workerPrefab == null) return;
+
+        Transform supplyDrop = transform.Find("ResourcesDrop");
+        Vector3 spawnPosition = supplyDrop != null ? supplyDrop.position : transform.position;
+
+        GameObject worker = Instantiate(workerPrefab, spawnPosition, Quaternion.identity);
+        Worker workerComponent = worker.GetComponent<Worker>();
+        if (workerComponent != null && supplyDrop != null)
+        {
+            workerComponent.supplyCenter = supplyDrop;
+        }
+    }
+
     public void TakeDamage(int damage)
     {
-        constHealth-=damage;
+        if (!IsConstructed) return;
+
+        constHealth -= damage;
         UpdateHealthUI();
     }
-    public void ConstructableWasPlaced()
+
+    private void UpdateHealthUI()
     {
-        healthTracker.gameObject.SetActive(true);
-         ActivateObstacle();
+        if (healthTracker != null)
+            healthTracker.UpdateSliderValue(constHealth, constMaxHealth);
 
-        if (boxCollider != null)
-        {
-            boxCollider.enabled = true;
-        }
-
-        if (isEnemy)
-        {
-            gameObject.tag = "Enemy";
-        }
-
+        if (constHealth <= 0)
+            DestroyBuilding();
     }
 
-    private void ActivateObstacle()
+    private void DestroyBuilding()
     {
-        obstacle = GetComponentInChildren<NavMeshObstacle>();
-        obstacle.enabled = true;
+        if (!isEnemy)
+            ResourceManager.Instance.UpdateBuildingChanged(buildingType, false, buildPosition);
+
+        Destroy(gameObject);
     }
 }

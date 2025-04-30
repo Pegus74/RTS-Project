@@ -86,8 +86,8 @@ GameObject:
   - component: {fileID: 1229676393744977835}
   - component: {fileID: 5616587290532763039}
   - component: {fileID: 3319522626351339323}
-  - component: {fileID: 7003788409189025409}
   - component: {fileID: 8543710884384374606}
+  - component: {fileID: 1236178698638919789}
   m_Layer: 9
   m_Name: House 1
   m_TagString: Untagged
@@ -151,21 +151,6 @@ BoxCollider:
   serializedVersion: 3
   m_Size: {x: 0.763239, y: 0.46515313, z: 0.521225}
   m_Center: {x: -0.123929076, y: 0.2957408, z: -0.20607758}
---- !u!114 &7003788409189025409
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2318559926197995587}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d5a8b1d7f5b5d344e8ddee97883637f3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  objectToSpawn: {fileID: 7903566547885379458, guid: 8a037b001b160594a816bd89601f22b7,
-    type: 3}
-  cost: 50
 --- !u!136 &8543710884384374606
 CapsuleCollider:
   m_ObjectHideFlags: 0
@@ -189,6 +174,25 @@ CapsuleCollider:
   m_Height: 1.7004639
   m_Direction: 1
   m_Center: {x: -0.13284913, y: 0.28311738, z: -0.13078614}
+--- !u!114 &1236178698638919789
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2318559926197995587}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 706a3a542c4ceeb48bed4f49ac3fb0d8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  canvasTag: UnitUI
+  destroyButtonIndex: 0
+  spawnButtonIndex: 1
+  cost: 50
+  disableSpawnButtonWhenActive: 1
+  objectToSpawn: {fileID: 7903566547885379458, guid: 8a037b001b160594a816bd89601f22b7,
+    type: 3}
 --- !u!1 &5142618788369571529
 GameObject:
   m_ObjectHideFlags: 0

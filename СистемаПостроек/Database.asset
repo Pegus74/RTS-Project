@@ -23,7 +23,7 @@ MonoBehaviour:
     <Requirements>k__BackingField:
     - resource: 0
       amount: 50
-    <buildDependency>k__BackingField: 02000000
+    <buildDependency>k__BackingField: 00000000
     <benefits>k__BackingField: []
   - <Name>k__BackingField: Castle
     <ID>k__BackingField: 1
@@ -47,7 +47,7 @@ MonoBehaviour:
     <Requirements>k__BackingField:
     - resource: 0
       amount: 50
-    <buildDependency>k__BackingField: 02000000
+    <buildDependency>k__BackingField: 01000000
     <benefits>k__BackingField: []
   - <Name>k__BackingField: TradeCenter
     <ID>k__BackingField: 3

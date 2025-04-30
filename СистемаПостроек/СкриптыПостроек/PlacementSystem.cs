@@ -23,6 +23,8 @@ public class PlacementSystem : MonoBehaviour
 
     IBuildingState buildingState;
 
+    public bool InSellMode;
+
     private void Start()
     {
 
@@ -35,7 +37,7 @@ public class PlacementSystem : MonoBehaviour
  
         selectedID = ID;
         StopPlacement();
-        buildingState = new PlacementState(ID, grid, previewSystem, database, floorData, furnitureData, objectPlacer);
+        buildingState = new PlacementState(ID, grid, previewSystem, database, floorData, objectPlacer);
         inputManager.OnClicked += PlaceStructure;
         inputManager.OnExit += StopPlacement;
     }
@@ -50,8 +52,17 @@ public class PlacementSystem : MonoBehaviour
 
         buildingState = new RemovingState(grid, previewSystem, floorData, furnitureData, objectPlacer);
 
+       
+
         inputManager.OnClicked += PlaceStructure;
+        inputManager.OnClicked += EndSelling;
+
         inputManager.OnExit += StopPlacement;
+        inputManager.OnExit += EndSelling;
+    }
+    private void EndSelling()
+    {
+        InSellMode = false;
     }
 
     private void PlaceStructure()
@@ -106,6 +117,11 @@ public class PlacementSystem : MonoBehaviour
 
     private void Update()
     {
+        if (Input.GetKeyDown(KeyCode.X))
+        {
+            InSellMode = true;
+            StartRemoving();
+        }
       
         if (buildingState == null)
             return;

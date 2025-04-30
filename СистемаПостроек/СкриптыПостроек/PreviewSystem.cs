@@ -1,26 +1,31 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PreviewSystem : MonoBehaviour
 {
-    [SerializeField] 
+    [SerializeField]
     private float previewYOffset = 0.06f;
 
-    private GameObject previewObject;
-
-    [SerializeField] 
+    [SerializeField]
     private Material previewMaterialPrefab;
-    private Material previewMaterialInstance;
 
+    private GameObject previewObject;
+    private Material previewMaterialInstance;
 
     private void Start()
     {
         previewMaterialInstance = new Material(previewMaterialPrefab);
     }
+
     public void StartShowingPlacementPreview(GameObject prefab, Vector2Int size)
     {
+        StopShowingPreview(); // Удаляем предыдущий превью если был
+        previewObject = Instantiate(prefab);
+        PreparePreview(previewObject);
+    }
+
+    public void ShowConstructionPreview(GameObject prefab)
+    {
+        StopShowingPreview();
         previewObject = Instantiate(prefab);
         PreparePreview(previewObject);
     }
@@ -32,27 +37,17 @@ public class PreviewSystem : MonoBehaviour
 
     private void PreparePreview(GameObject previewObject)
     {
-        // Change the materials of the prefab (and its children) to semi-transparent
-
         Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
         foreach (Renderer renderer in renderers)
         {
             Material[] materials = renderer.materials;
             for (int i = 0; i < materials.Length; i++)
             {
-                // Getting the current material color
-                Color color = materials[i].color;
-     
-                // changing its alpha
-                color.a = 0.5f;
-
-                // setting the modified color
-                materials[i].color = color;
-
-
                 materials[i] = previewMaterialInstance;
+                Color color = materials[i].color;
+                color.a = 0.5f;
+                materials[i].color = color;
             }
-
             renderer.materials = materials;
         }
     }
@@ -62,6 +57,7 @@ public class PreviewSystem : MonoBehaviour
         if (previewObject != null)
         {
             Destroy(previewObject);
+            previewObject = null;
         }
     }
 
@@ -72,7 +68,6 @@ public class PreviewSystem : MonoBehaviour
             MovePreview(position);
             ApplyFeedbackToPreview(validity);
         }
-      
         ApplyFeedbackToCursor(validity);
     }
 
@@ -85,14 +80,16 @@ public class PreviewSystem : MonoBehaviour
 
     private void ApplyFeedbackToCursor(bool validity)
     {
-        Color c = validity ? Color.white : Color.red;
-        c.a = 1f;
-     
+        // Здесь может быть логика изменения курсора
+        // Пока оставляем пустым, так как реализация не показана
     }
 
     private void MovePreview(Vector3 position)
     {
-        previewObject.transform.position = new Vector3(position.x, position.y + previewYOffset, position.z);
+        previewObject.transform.position = new Vector3(
+            position.x,
+            position.y + previewYOffset,
+            position.z
+        );
     }
-
 }

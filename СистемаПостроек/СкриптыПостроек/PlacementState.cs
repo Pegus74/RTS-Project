@@ -4,41 +4,30 @@ using UnityEngine;
 
 public class PlacementState : IBuildingState
 {
-    private int selectedObjectIndex = -1;
-    int ID;
-    Grid grid;
-    PreviewSystem previewSystem;
-    ObjectsDatabseSO database;
-    GridData floorData;
-    GridData furnitureData;
-    ObjectPlacer objectPlacer;
+    private int selectedObjectIndex;
+    private Grid grid;
+    private PreviewSystem previewSystem;
+    private ObjectsDatabseSO database;
+    private GridData floorData;
+    private ObjectPlacer objectPlacer;
 
-    public PlacementState(int iD,
-                          Grid grid,
-                          PreviewSystem previewSystem,
-                          ObjectsDatabseSO database,
-                          GridData floorData,
-                          GridData furnitureData,
-                          ObjectPlacer objectPlacer)
+    public PlacementState(int id, Grid grid, PreviewSystem previewSystem,
+                        ObjectsDatabseSO database, GridData floorData,
+                        ObjectPlacer objectPlacer)
     {
-        ID = iD;
         this.grid = grid;
         this.previewSystem = previewSystem;
         this.database = database;
         this.floorData = floorData;
-        this.furnitureData = furnitureData;
         this.objectPlacer = objectPlacer;
 
-        selectedObjectIndex = database.objectsData.FindIndex(data => data.ID == ID);
-        if (selectedObjectIndex > -1)
-        {
-            previewSystem.StartShowingPlacementPreview(database.objectsData[selectedObjectIndex].Prefab,
-                database.objectsData[selectedObjectIndex].Size);
-        }
-        else
-        {
-            throw new System.Exception($"No object with ID {iD}");
-        }
+        selectedObjectIndex = database.objectsData.FindIndex(data => data.ID == id);
+        if (selectedObjectIndex == -1)
+            throw new System.Exception($"Object with ID {id} not found in database");
+
+        previewSystem.StartShowingPlacementPreview(
+            database.objectsData[selectedObjectIndex].Prefab,
+            database.objectsData[selectedObjectIndex].Size);
     }
 
     public void EndState()
@@ -48,68 +37,44 @@ public class PlacementState : IBuildingState
 
     public void OnAction(Vector3Int gridPosition)
     {
-      
-        bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
-        if (placementValidity == false)
-        {
+        if (!CheckPlacementValidity(gridPosition))
             return;
-        }
 
-        int index = objectPlacer.PlaceObject(database.objectsData[selectedObjectIndex].Prefab, grid.CellToWorld(gridPosition));
+        int index = objectPlacer.PlaceObject(
+            database.objectsData[selectedObjectIndex].Prefab,
+            grid.CellToWorld(gridPosition));
 
-        ResourceManager.Instance.DecreaseResourcesBasedOnRequirement(database.objectsData[selectedObjectIndex]);
-
-        BuildingType buildingType = database.objectsData[selectedObjectIndex].thisBuildingType;
-        ResourceManager.Instance.UpdateBuildingChanged(buildingType, true,new Vector3());
-
-     
-        GridData selectedData = floorData;
-
-        selectedData.AddObjectAt(gridPosition,
+        floorData.AddObjectAt(
+            gridPosition,
             database.objectsData[selectedObjectIndex].Size,
             database.objectsData[selectedObjectIndex].ID,
             index);
 
-        previewSystem.UpdatePosition(grid.CellToWorld(gridPosition), false);
-    }
-
-    private List<int> GetAllFloorIDs()
-    {
-        return new List<int> { 11 }; 
-    }
-
-    private bool CheckPlacementValidity(Vector3Int gridPosition, int selectedObjectIndex)
-    {
-       
-        GridData selectedData = floorData;
-        if (!selectedData.CanPlaceObjectAt(gridPosition,database.objectsData[selectedObjectIndex].Size))
-        {
-            return false;
-        }
-        Vector3 worldPosition = grid.CellToWorld(gridPosition);
-        Collider[] colliders = Physics.OverlapBox(worldPosition, new Vector3(0.5f, 0.5f, 0.5f), Quaternion.identity);
-
-        foreach (var collider in colliders) 
-        {
-            if (collider.CompareTag("Ally")|| collider.CompareTag("Enemy") || collider.CompareTag("Terrain"))//добавить другие тэги
-            {
-                return false;
-            }
-        
-        
-        }
-
-        return true;
-
-
-
+        ResourceManager.Instance.DecreaseResourcesBasedOnRequirement(
+            database.objectsData[selectedObjectIndex]);
     }
 
     public void UpdateState(Vector3Int gridPosition)
     {
-        
-        bool placementValidity = CheckPlacementValidity(gridPosition, selectedObjectIndex);
+        bool isValid = CheckPlacementValidity(gridPosition);
+        previewSystem.UpdatePosition(grid.CellToWorld(gridPosition), isValid);
+    }
 
-        previewSystem.UpdatePosition(grid.CellToWorld(gridPosition), placementValidity);
+    private bool CheckPlacementValidity(Vector3Int gridPosition)
+    {
+        // Проверка занятости клетки
+        if (!floorData.CanPlaceObjectAt(gridPosition, database.objectsData[selectedObjectIndex].Size))
+            return false;
+
+        // Проверка коллизий
+        Vector3 worldPos = grid.CellToWorld(gridPosition);
+        Collider[] colliders = Physics.OverlapBox(worldPos, Vector3.one * 0.5f, Quaternion.identity);
+        foreach (var collider in colliders)
+        {
+            if (collider.CompareTag("Ally") || collider.CompareTag("Enemy") || collider.CompareTag("Terrain"))
+                return false;
+        }
+
+        return true;
     }
 }
