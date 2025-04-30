@@ -6,11 +6,12 @@ using UnityEngine.UI;
 public class UnitSpawn : MonoBehaviour
 {
     public GameObject objectToSpawn;
-    public int cost = 50; 
+    public int cost = 50;
+   
 
     private void Start()
     {
-        
+     
     }
 
     void OnMouseDown()
@@ -20,11 +21,11 @@ public class UnitSpawn : MonoBehaviour
         {
           
             ResourceManager.Instance.DecreaseResource(ResourceManager.ResourcesType.Gold, cost);
-
-          
             Vector3 spawnPosition = transform.position + new Vector3(1, 0, 0);
             Instantiate(objectToSpawn, spawnPosition, Quaternion.identity);
-        }
+         
+
+    }
         else
         {
             Debug.Log("Недостаточно золота для создания объекта.");

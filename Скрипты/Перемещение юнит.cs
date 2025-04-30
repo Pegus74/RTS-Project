@@ -27,8 +27,10 @@ public class ѕеремещениеёнит : MonoBehaviour
             if (Physics.Raycast(ray, out hit,Mathf.Infinity, terrain)) 
             { 
                 isCommandedToMove = true;
+               
                 StartCoroutine(NoCommand());
                 agent.SetDestination(hit.point);
+
                
             }
         }

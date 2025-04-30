@@ -25,6 +25,15 @@ public class BuildingInterface : MonoBehaviour
         InitializeUI();
     }
 
+    private void Update()
+    {
+        // Закрытие интерфейса при нажатии Esc
+        if (isUIOpen && Input.GetKeyDown(KeyCode.Escape))
+        {
+            CloseUI();
+        }
+    }
+
     private void InitializeUI()
     {
         Canvas targetCanvas = GameObject.FindGameObjectWithTag(canvasTag)?.GetComponent<Canvas>();
@@ -103,6 +112,12 @@ public class BuildingInterface : MonoBehaviour
     {
         isUIOpen = !isUIOpen;
         SetButtonsActive(isUIOpen);
+    }
+
+    private void CloseUI()
+    {
+        isUIOpen = false;
+        SetButtonsActive(false);
     }
 
     private void DestroyObject()
