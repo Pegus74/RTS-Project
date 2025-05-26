@@ -18,14 +18,14 @@ public class Constructable : MonoBehaviour, IDamageable
     [SerializeField] private float constructionTime = 3f;
     [SerializeField] private GameObject constructionModel;
     [SerializeField] private GameObject finishedModel;
-    [SerializeField] private float constructionRadius = 5f;
+    [SerializeField] private float constructionRadius = 3f;
     [SerializeField] private int workersRequired = 1;
 
     [Header("Collider Settings")]
     [SerializeField] private SphereCollider constructionZone;
 
     private NavMeshObstacle obstacle;
-    private float constHealth;
+    private float constHealth = 100f;
     private List<Worker> nearbyWorkers = new List<Worker>();
     private bool constructionInProgress = false;
     public float constructionProgress = 0f;
@@ -36,6 +36,7 @@ public class Constructable : MonoBehaviour, IDamageable
 
     private void Awake()
     {
+        constHealth = constMaxHealth; 
         obstacle = GetComponentInChildren<NavMeshObstacle>();
         boxCollider = GetComponent<BoxCollider>();
 
@@ -51,36 +52,62 @@ public class Constructable : MonoBehaviour, IDamageable
 
         InitializeConstruction();
     }
+
     private void InitializeConstruction()
     {
-        if (constructionModel != null) constructionModel.SetActive(true);
-        if (finishedModel != null) finishedModel.SetActive(false);
-
-        if (obstacle != null) obstacle.enabled = false;
-        if (boxCollider != null) boxCollider.enabled = false;
+        if (IsConstructed)
+        {
+            // Если здание уже построено, активируем финальную модель
+            if (constructionModel != null) constructionModel.SetActive(false);
+            if (finishedModel != null) finishedModel.SetActive(true);
+            if (obstacle != null) obstacle.enabled = true;
+            if (boxCollider != null) boxCollider.enabled = true;
+        }
+        else
+        {
+            // Иначе активируем модель строительства
+            if (constructionModel != null) constructionModel.SetActive(true);
+            if (finishedModel != null) finishedModel.SetActive(false);
+            if (obstacle != null) obstacle.enabled = false;
+            if (boxCollider != null) boxCollider.enabled = false;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        Debug.Log($"Worker entered: {other.name}");
-        if (!other.name.Contains("Worker")) return;
+        if (IsConstructed) return;
 
         Worker worker = other.GetComponent<Worker>();
         if (worker != null && worker.IsAvailableForConstruction())
         {
-            worker.StartHelpingConstruction(this);
-            nearbyWorkers.Add(worker);
-
-            if (nearbyWorkers.Count >= workersRequired && !constructionInProgress)
+            // Добавляем проверку на ручное управление
+            if (ВыборЮнитов.Instance.unitsSelected.Contains(worker.gameObject))
             {
-                StartConstruction();
+                worker.StartHelpingConstruction(this);
+                nearbyWorkers.Add(worker);
+
+                if (nearbyWorkers.Count >= workersRequired && !constructionInProgress)
+                {
+                    StartConstruction();
+                }
+            }
+            else if (!worker.IsInManualMode()) // Автономный режим
+            {
+                worker.StartHelpingConstruction(this);
+                nearbyWorkers.Add(worker);
+
+                if (nearbyWorkers.Count >= workersRequired && !constructionInProgress)
+                {
+                    StartConstruction();
+                }
             }
         }
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (!other.CompareTag("Worker")) return;
+        // Если здание уже построено, игнорируем выходящих рабочих
+        if (IsConstructed || other == null) return; // Добавлена проверка на null
 
         Worker worker = other.GetComponent<Worker>();
         if (worker != null && nearbyWorkers.Contains(worker))
@@ -103,11 +130,10 @@ public class Constructable : MonoBehaviour, IDamageable
 
     public void StartConstruction()
     {
-        if (constructionInProgress) return;
+        // Если здание уже построено или строительство уже идет, ничего не делаем
+        if (IsConstructed || constructionInProgress) return;
 
-        constructionProgress = 0f;
         constructionInProgress = true;
-        IsConstructed = false;
 
         if (constructionModel != null) constructionModel.SetActive(true);
         if (finishedModel != null) finishedModel.SetActive(false);
@@ -115,7 +141,7 @@ public class Constructable : MonoBehaviour, IDamageable
         StartCoroutine(ConstructionProcess());
     }
 
-    private void PauseConstruction()
+    public void PauseConstruction()
     {
         constructionInProgress = false;
         StopCoroutine(nameof(ConstructionProcess));
@@ -133,9 +159,7 @@ public class Constructable : MonoBehaviour, IDamageable
             yield return null;
         }
         CompleteConstruction();
-
     }
-
 
     private void UpdateConstructionProgress(float progress)
     {
@@ -145,6 +169,7 @@ public class Constructable : MonoBehaviour, IDamageable
     private void CompleteConstruction()
     {
         IsConstructed = true;
+
         constructionInProgress = false;
 
         if (constructionModel != null) constructionModel.SetActive(false);
@@ -195,25 +220,44 @@ public class Constructable : MonoBehaviour, IDamageable
 
     public void TakeDamage(int damage)
     {
-        if (!IsConstructed) return;
+        if (!IsConstructed || constHealth <= 0) return; // Добавлена проверка
 
-        constHealth -= damage;
+        constHealth = Mathf.Max(0, constHealth - damage); // Гарантируем неотрицательное значение
+        Debug.Log($"Здание получило {damage} урона. Осталось здоровья: {constHealth}/{constMaxHealth}");
+
         UpdateHealthUI();
     }
 
     private void UpdateHealthUI()
     {
         if (healthTracker != null)
+        {
             healthTracker.UpdateSliderValue(constHealth, constMaxHealth);
+        }
 
         if (constHealth <= 0)
+        {
+            Debug.Log("Здание уничтожено!");
+            constHealth = 0;
             DestroyBuilding();
+        }
     }
 
     private void DestroyBuilding()
     {
         if (!isEnemy)
-            ResourceManager.Instance.UpdateBuildingChanged(buildingType, false, buildPosition);
+        {
+            var placementSystem = FindObjectOfType<PlacementSystem>();
+            if (placementSystem != null)
+            {
+                placementSystem.RemovePlacementData(transform.position);
+            }
+
+            if (ResourceManager.Instance != null)
+            {
+                ResourceManager.Instance.UpdateBuildingChanged(buildingType, false, transform.position);
+            }
+        }
 
         Destroy(gameObject);
     }

@@ -47,11 +47,29 @@ public class GridData
         return true;
     }
 
-    internal void RemoveObjectAt(Vector3Int gridPosition)
+    public void RemoveObjectAt(Vector3Int gridPosition)
     {
-        foreach (var pos in placedObjects[gridPosition].occupiedPositions)
+        // Проверяем, есть ли объект в словаре
+        if (!placedObjects.ContainsKey(gridPosition))
         {
-            placedObjects.Remove(pos);
+            Debug.LogWarning($"Позиция {gridPosition} не найдена в GridData");
+            return;
+        }
+
+        // Получаем данные о размещении
+        PlacementData data = placedObjects[gridPosition];
+
+        // Удаляем все занятые позиции
+        foreach (var pos in data.occupiedPositions)
+        {
+            if (placedObjects.ContainsKey(pos))
+            {
+                placedObjects.Remove(pos);
+            }
+            else
+            {
+                Debug.LogWarning($"Позиция {pos} не найдена при удалении объекта");
+            }
         }
     }
 
@@ -60,6 +78,11 @@ public class GridData
         if (placedObjects.ContainsKey(gridPosition) == false)
             return -1;
         return placedObjects[gridPosition].PlacedObjectIndex;
+    }
+
+    public bool ContainsPosition(Vector3Int gridPosition)
+    {
+        return placedObjects.ContainsKey(gridPosition);
     }
 }
 

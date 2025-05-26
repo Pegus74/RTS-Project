@@ -2,25 +2,78 @@ using UnityEngine;
 
 public class PreviewSystem : MonoBehaviour
 {
-    [SerializeField]
-    private float previewYOffset = 0.06f;
-
-    [SerializeField]
-    private Material previewMaterialPrefab;
+    [SerializeField] private LayerMask previewLayer;
+   
+    [SerializeField] private float previewYOffset = 0.06f;
+    [SerializeField] private Material previewMaterialPrefab;
 
     private GameObject previewObject;
     private Material previewMaterialInstance;
 
-    private void Start()
+    private void Awake() // Изменено с Start на Awake
     {
-        previewMaterialInstance = new Material(previewMaterialPrefab);
+        previewLayer = LayerMask.NameToLayer("Preview");
+        previewMaterialInstance = new Material(previewMaterialPrefab); // Инициализация материала
     }
 
     public void StartShowingPlacementPreview(GameObject prefab, Vector2Int size)
     {
-        StopShowingPreview(); // Удаляем предыдущий превью если был
+        StopShowingPreview();
         previewObject = Instantiate(prefab);
-        PreparePreview(previewObject);
+        SetLayerRecursively(previewObject, previewLayer);
+        PreparePreview(previewObject); // Используем единый метод подготовки
+    }
+
+
+    private void SetLayerRecursively(GameObject obj, int layer)
+    {
+        obj.layer = layer;
+        foreach (Transform child in obj.transform)
+        {
+            SetLayerRecursively(child.gameObject, layer);
+        }
+    }
+    private void ApplyPreviewMaterials()
+    {
+        foreach (var renderer in previewObject.GetComponentsInChildren<Renderer>())
+        {
+            renderer.material = previewMaterialInstance;
+        }
+    }
+
+    private void DisableComponents(GameObject obj)
+    {
+        // Отключаем коллайдеры (хотя они уже не работают из-за слоя)
+        foreach (var collider in obj.GetComponentsInChildren<Collider>())
+        {
+            collider.enabled = false;
+        }
+
+        // Отключаем скрипты, которые не должны работать в превью
+        var constructable = obj.GetComponent<Constructable>();
+        if (constructable != null) constructable.enabled = false;
+
+        var attackable = obj.GetComponent<IDamageable>();
+        if (attackable != null) Destroy(attackable as MonoBehaviour);
+    }
+
+    public void ConfirmPlacement()
+    {
+        if (previewObject == null) return;
+        previewObject.tag = "AllyBuilding"; // Или другой нужный тег
+        SetLayerRecursively(previewObject, LayerMask.NameToLayer("Default"));
+
+            // Возвращаем нормальный слой (например, "Default")
+            SetLayerRecursively(previewObject, LayerMask.NameToLayer("Default"));
+
+        // Включаем обратно коллайдеры и компоненты
+        foreach (var collider in previewObject.GetComponentsInChildren<Collider>())
+        {
+            collider.enabled = true;
+        }
+
+        var constructable = previewObject.GetComponent<Constructable>();
+        if (constructable != null) constructable.enabled = true;
     }
 
     public void ShowConstructionPreview(GameObject prefab)
@@ -37,19 +90,21 @@ public class PreviewSystem : MonoBehaviour
 
     private void PreparePreview(GameObject previewObject)
     {
-        Renderer[] renderers = previewObject.GetComponentsInChildren<Renderer>();
-        foreach (Renderer renderer in renderers)
+        previewObject.tag = "Preview";
+        previewObject.layer = LayerMask.NameToLayer("Preview");
+        foreach (Renderer renderer in previewObject.GetComponentsInChildren<Renderer>())
         {
-            Material[] materials = renderer.materials;
-            for (int i = 0; i < materials.Length; i++)
-            {
-                materials[i] = previewMaterialInstance;
-                Color color = materials[i].color;
-                color.a = 0.5f;
-                materials[i].color = color;
-            }
-            renderer.materials = materials;
+            renderer.material = previewMaterialInstance;
         }
+      
+        // 2. Отключение компонентов
+        foreach (var collider in previewObject.GetComponentsInChildren<Collider>())
+        {
+            collider.enabled = false;
+        }
+
+        var constructable = previewObject.GetComponent<Constructable>();
+        if (constructable != null) constructable.enabled = false;
     }
 
     public void StopShowingPreview()
@@ -63,17 +118,17 @@ public class PreviewSystem : MonoBehaviour
 
     public void UpdatePosition(Vector3 position, bool validity)
     {
-        if (previewObject != null)
-        {
-            MovePreview(position);
-            ApplyFeedbackToPreview(validity);
-        }
-        ApplyFeedbackToCursor(validity);
+        if (previewObject == null || previewMaterialInstance == null) return;
+
+        MovePreview(position);
+        ApplyFeedbackToPreview(validity);
     }
 
     private void ApplyFeedbackToPreview(bool validity)
     {
-        Color c = validity ? Color.white : Color.red;
+        if (previewMaterialInstance == null) return;
+
+        Color c = validity ? Color.green : Color.red;
         c.a = 0.5f;
         previewMaterialInstance.color = c;
     }

@@ -47,14 +47,14 @@ MonoBehaviour:
     <Requirements>k__BackingField:
     - resource: 0
       amount: 50
-    <buildDependency>k__BackingField: 01000000
+    <buildDependency>k__BackingField: 00000000
     <benefits>k__BackingField: []
   - <Name>k__BackingField: TradeCenter
     <ID>k__BackingField: 3
     <thisBuildingType>k__BackingField: 0
     description: 
     <Size>k__BackingField: {x: 1, y: 1}
-    <Prefab>k__BackingField: {fileID: 4305623619397141636, guid: 8681e1da0eeb7d44cbc8b0530078021f,
+    <Prefab>k__BackingField: {fileID: 4466120518310031209, guid: 92481d9226f20b4408ea8b1ec8e50fd1,
       type: 3}
     <Requirements>k__BackingField:
     - resource: 0

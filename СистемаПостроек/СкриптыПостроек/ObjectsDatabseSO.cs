@@ -72,17 +72,18 @@ public class BuildRequirement
 }
 
 
+
 [System.Serializable]
 public class BuildBenefits
 {
     public enum BenefitType
     {
-        Housing
+        Housing,
+        Production // Добавлен отсутствующий тип
     }
-
 
     public string benefit;
     public Sprite benefitIcon;
     public BenefitType benefitType;
-    public int benefitAmount;
+    public int benefitAmount; // Переименовано с value на benefitAmount
 }
