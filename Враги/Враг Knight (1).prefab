@@ -2325,6 +2325,9 @@ MonoBehaviour:
   attackStateMaterial: {fileID: 2100000, guid: 3381a5149b9053d449b07d6e79debfa9, type: 2}
   isPlayer: 0
   isEnemy: 1
+  ignoreLayers:
+    serializedVersion: 2
+    m_Bits: 2048
   unitDamage: 10
 --- !u!54 &2878302957008558626
 Rigidbody:
