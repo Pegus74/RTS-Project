@@ -48,13 +48,19 @@ public class ВыборЮнитов : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit, Mathf.Infinity, Clickable))
             {
-                if (Input.GetKey(KeyCode.LeftAlt))
+                GameObject clickedObject = hit.collider.gameObject;
+
+                // Проверяем, что юнит принадлежит игроку (не враг)
+                if (IsPlayerUnit(clickedObject))
                 {
-                    SeveralSelect(hit.collider.gameObject);
-                }
-                else
-                {
-                    SelectClick(hit.collider.gameObject);
+                    if (Input.GetKey(KeyCode.LeftAlt))
+                    {
+                        SeveralSelect(clickedObject);
+                    }
+                    else
+                    {
+                        SelectClick(clickedObject);
+                    }
                 }
             }
             else
@@ -103,6 +109,52 @@ public class ВыборЮнитов : MonoBehaviour
                 attackCursorVisible = false;
             }
         }
+
+        //Ресурысы ))
+
+        if (unitsSelected.Count > 0 && OnlyWorkerSelected())
+        {
+            RaycastHit hit;
+            Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+
+            if (Physics.Raycast(ray, out hit, Mathf.Infinity, ~0, QueryTriggerInteraction.Collide))
+            {
+                ResourceNode resourceNode = hit.transform.GetComponent<ResourceNode>();
+                if (resourceNode != null)
+                {
+
+                    if (Input.GetMouseButtonDown(1))
+                    {
+                        Transform node = hit.transform;
+
+                        foreach (GameObject unit in unitsSelected)
+                        {
+                            Worker worker = unit.GetComponent<Worker>();
+                            if (worker != null)
+                            {
+                                worker.assignedNode = node;
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                attackCursorVisible = false;
+            }
+        }
+    }
+    private bool OnlyWorkerSelected()
+    {
+        if (unitsSelected.Count==0) return false;
+        foreach (GameObject unit in unitsSelected)
+        {
+            if (unit == null || unit.GetComponent<Worker>() == null )
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Новый метод для проверки выделения рабочего
@@ -120,6 +172,16 @@ public class ВыборЮнитов : MonoBehaviour
         }
     }
 
+    private bool IsPlayerUnit(GameObject unit)
+    {
+        AttackController attackController = unit.GetComponent<AttackController>();
+        if (attackController != null)
+        {
+            return attackController.isPlayer; // true для юнитов игрока
+        }
+        return false; // если нет AttackController, считаем врагом
+    }
+
     private bool AtLeastOneUnit(List<GameObject> unitsSelected)
     {
         foreach (GameObject unit in unitsSelected)
@@ -132,7 +194,7 @@ public class ВыборЮнитов : MonoBehaviour
         return false;
     }
 
- 
+
 
     private void SeveralSelect(GameObject unit)
     {
@@ -165,7 +227,7 @@ public class ВыборЮнитов : MonoBehaviour
         unitsSelected.Clear();
 
         // Скрываем UI при снятии выделения
-       if (workerUI != null) workerUI.SetActive(false);
+        if (workerUI != null) workerUI.SetActive(false);
     }
 
     private void UnitMovement(GameObject unit, bool Move)
@@ -190,6 +252,11 @@ public class ВыборЮнитов : MonoBehaviour
     private void SelectUnit(GameObject unit, bool isSelected)
     {
         SelectIndicator(unit, isSelected);
-        UnitMovement(unit, isSelected);
+
+        // Для рабочих не включаем/выключаем перемещение, так как они управляются своим скриптом
+        if (unit.GetComponent<Worker>() == null)
+        {
+            UnitMovement(unit, isSelected);
+        }
     }
 }

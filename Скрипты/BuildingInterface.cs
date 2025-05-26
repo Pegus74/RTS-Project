@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
 
 public class BuildingInterface : MonoBehaviour
 {
@@ -12,12 +13,17 @@ public class BuildingInterface : MonoBehaviour
 
     [Header("Настройки спавна")]
     public GameObject objectToSpawn;
+    [SerializeField] private float spawnDelay = 3f; // Новая переменная для задержки спавна
+    [SerializeField] private float spawnDistance = 1f; // Дистанция от здания
 
     private Transform uiPanel;
     private Button destroyButton;
     private Button spawnButton;
     private ResourceManager resourceManager;
     private bool isUIOpen;
+    private bool isSpawning = false; // Флаг процесса спавна
+    public static event System.Action<BuildingInterface> OnBuildingSelected;
+    private static BuildingInterface _currentlySelected;
 
     private void Start()
     {
@@ -27,11 +33,25 @@ public class BuildingInterface : MonoBehaviour
 
     private void Update()
     {
-        // Закрытие интерфейса при нажатии Esc
         if (isUIOpen && Input.GetKeyDown(KeyCode.Escape))
         {
             CloseUI();
         }
+        if (isUIOpen && Input.GetMouseButtonDown(0) && !IsPointerOverUI())
+        {
+            RaycastHit hit;
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            if (!Physics.Raycast(ray, out hit) || hit.transform != transform)
+            {
+                CloseUI();
+            }
+        }
+    }
+
+    private bool IsPointerOverUI()
+    {
+        // Проверяем, находится ли курсор над UI-элементом
+        return UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
     }
 
     private void InitializeUI()
@@ -104,6 +124,17 @@ public class BuildingInterface : MonoBehaviour
     {
         if (uiPanel != null)
         {
+            // Если кликаем на уже выбранное здание - закрываем UI
+            if (_currentlySelected == this)
+            {
+                CloseUI();
+                _currentlySelected = null;
+                return;
+            }
+
+            // Уведомляем о новом выбранном здании
+            OnBuildingSelected?.Invoke(this);
+            _currentlySelected = this;
             ToggleUI();
         }
     }
@@ -113,9 +144,14 @@ public class BuildingInterface : MonoBehaviour
         isUIOpen = !isUIOpen;
         SetButtonsActive(isUIOpen);
     }
+    public bool IsUIOpen() => isUIOpen;
 
-    private void CloseUI()
+    public void CloseUI()
     {
+        if (_currentlySelected == this)
+        {
+            _currentlySelected = null;
+        }
         isUIOpen = false;
         SetButtonsActive(false);
     }
@@ -129,10 +165,12 @@ public class BuildingInterface : MonoBehaviour
 
     private void SpawnUnit()
     {
+        if (_currentlySelected != this || isSpawning) return;
+
         if (resourceManager.GetGold() >= cost)
         {
             resourceManager.DecreaseResource(ResourceManager.ResourcesType.Gold, cost);
-            Instantiate(objectToSpawn, transform.position + new Vector3(1, 0, 0), Quaternion.identity);
+            StartCoroutine(SpawnWithDelay());
 
             if (disableSpawnButtonWhenActive)
             {
@@ -145,14 +183,50 @@ public class BuildingInterface : MonoBehaviour
         }
     }
 
+    private IEnumerator SpawnWithDelay()
+    {
+        isSpawning = true;
+
+        
+        if (spawnButton != null)
+        {
+            spawnButton.interactable = false;
+        }
+
+        yield return new WaitForSeconds(spawnDelay);
+
+        Vector3 spawnPosition = transform.position;
+        spawnPosition.y = 0f; // Убедимся, что юнит появляется на земле
+
+        GameObject spawnedUnit = Instantiate(
+            objectToSpawn,
+            spawnPosition,
+            Quaternion.identity
+        );
+
+        Worker workerComponent = spawnedUnit.GetComponent<Worker>();
+        if (workerComponent != null)
+        {
+            workerComponent.supplyCenter = this.transform;
+            Debug.Log($"Назначен supplyCenter для рабочего: {this.name}");
+        }
+
+        isSpawning = false;
+
+        // Восстанавливаем кнопку, если нужно
+        if (!disableSpawnButtonWhenActive && spawnButton != null)
+        {
+            spawnButton.interactable = true;
+        }
+    }
+
     private void UpdateSpawnButtonState()
     {
         if (spawnButton != null)
         {
-            spawnButton.interactable = resourceManager.GetGold() >= cost;
+            spawnButton.interactable = resourceManager.GetGold() >= cost && !isSpawning;
         }
     }
-
     private void OnDestroy()
     {
         if (destroyButton != null) destroyButton.onClick.RemoveListener(DestroyObject);

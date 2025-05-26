@@ -112,4 +112,16 @@ public class ResourceManager : MonoBehaviour
     {
         OnResourceChanged -= UpdateUI;
     }
+
+    public void AddHousing(int amount)
+    {
+        // Реализация добавления жилья
+        Debug.Log($"Added {amount} housing");
+    }
+
+    public void AddProduction(int amount)
+    {
+        // Реализация добавления производства
+        Debug.Log($"Added {amount} production");
+    }
 }

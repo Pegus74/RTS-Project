@@ -18,5 +18,6 @@ public class ResourceNode : MonoBehaviour
                 resources = 0;
             }
         }
+       
     }
 }

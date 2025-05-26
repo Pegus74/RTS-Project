@@ -24,35 +24,32 @@ public class КоробкаВыбора : MonoBehaviour
 
     private void Update()
     {
-        // When Clicked
+        // При нажатии ЛКМ
         if (Input.GetMouseButtonDown(0))
         {
             startPosition = Input.mousePosition;
-
-            // For selection the Units
             selectionBox = new Rect();
         }
 
-        // When Dragging
+        // При удержании ЛКМ (перетаскивание)
         if (Input.GetMouseButton(0))
         {
+            endPosition = Input.mousePosition;
+            DrawVisual();
+            DrawSelection();
 
-            if(boxVisual.rect.width>0|| boxVisual.rect.height>0)
+            // Если коробка выделения имеет размер, снимаем старое выделение и выбираем юнитов
+            if (boxVisual.rect.width > 0 || boxVisual.rect.height > 0)
             {
                 ВыборЮнитов.Instance.DeselectAll();
                 SelectUnits();
             }
-
-            endPosition = Input.mousePosition;
-            DrawVisual();
-            DrawSelection();
         }
 
-        // When Releasing
+        // При отпускании ЛКМ
         if (Input.GetMouseButtonUp(0))
         {
             SelectUnits();
-
             startPosition = Vector2.zero;
             endPosition = Vector2.zero;
             DrawVisual();
@@ -61,20 +58,11 @@ public class КоробкаВыбора : MonoBehaviour
 
     void DrawVisual()
     {
-        // Calculate the starting and ending positions of the selection box.
         Vector2 boxStart = startPosition;
         Vector2 boxEnd = endPosition;
-
-        // Calculate the center of the selection box.
         Vector2 boxCenter = (boxStart + boxEnd) / 2;
-
-        // Set the position of the visual selection box based on its center.
         boxVisual.position = boxCenter;
-
-        // Calculate the size of the selection box in both width and height.
         Vector2 boxSize = new Vector2(Mathf.Abs(boxStart.x - boxEnd.x), Mathf.Abs(boxStart.y - boxEnd.y));
-
-        // Set the size of the visual selection box based on its calculated size.
         boxVisual.sizeDelta = boxSize;
     }
 
@@ -90,7 +78,6 @@ public class КоробкаВыбора : MonoBehaviour
             selectionBox.xMin = startPosition.x;
             selectionBox.xMax = Input.mousePosition.x;
         }
-
 
         if (Input.mousePosition.y < startPosition.y)
         {
@@ -108,10 +95,29 @@ public class КоробкаВыбора : MonoBehaviour
     {
         foreach (var unit in ВыборЮнитов.Instance.allUnitsList)
         {
-            if (selectionBox.Contains(myCam.WorldToScreenPoint(unit.transform.position)))
+            // Проверяем, что юнит принадлежит игроку (не враг)
+            if (IsPlayerUnit(unit) && selectionBox.Contains(myCam.WorldToScreenPoint(unit.transform.position)))
             {
                 ВыборЮнитов.Instance.DragSelect(unit);
             }
         }
+    }
+
+    // Проверяет, является ли юнит "своим" (игроком)
+    private bool IsPlayerUnit(GameObject unit)
+    {
+        // Проверяем, является ли юнит рабочим
+        if (unit.GetComponent<Worker>() != null)
+        {
+            return true; // Рабочие всегда принадлежат игроку
+        }
+
+        // Стандартная проверка для других юнитов
+        AttackController attackController = unit.GetComponent<AttackController>();
+        if (attackController != null)
+        {
+            return attackController.isPlayer;
+        }
+        return false;
     }
 }

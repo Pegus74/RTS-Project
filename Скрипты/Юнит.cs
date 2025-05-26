@@ -1,15 +1,17 @@
-using System.Collections;
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
-public class Юнит : MonoBehaviour,IDamageable
+public class Юнит : MonoBehaviour, IDamageable
 {
     private float unitHealth;
     public float unitMaxHealth;
     public HealthTracker healthTracker;
     Animator animator;
     UnityEngine.AI.NavMeshAgent navMeshAgent;
-    // Start is called before the first frame update
+
+    // Событие, вызываемое при уничтожении юнита
+    public event Action OnDestroyEvent;
+
     void Start()
     {
         ВыборЮнитов.Instance.allUnitsList.Add(gameObject);
@@ -21,25 +23,27 @@ public class Юнит : MonoBehaviour,IDamageable
 
     private void OnDestroy()
     {
+        // Уведомляем подписчиков о смерти юнита
+        OnDestroyEvent?.Invoke();
+
+        // Удаляем юнит из списков
         ВыборЮнитов.Instance.unitsSelected.Remove(gameObject);
+        ВыборЮнитов.Instance.allUnitsList.Remove(gameObject);
     }
-    
+
     private void UpdateHealthUI()
     {
         healthTracker.UpdateSliderValue(unitHealth, unitMaxHealth);
-        
-        if (unitHealth<=0)
+
+        if (unitHealth <= 0)
         {
             Destroy(gameObject);
-            ВыборЮнитов.Instance.allUnitsList.Remove(gameObject);
-            ВыборЮнитов.Instance.unitsSelected.Remove(gameObject);
         }
-    
     }
 
     public void TakeDamage(int damageToInflict)
     {
-         unitHealth -= damageToInflict;
+        unitHealth -= damageToInflict;
         UpdateHealthUI();
     }
 
@@ -47,7 +51,6 @@ public class Юнит : MonoBehaviour,IDamageable
     {
         if (navMeshAgent.remainingDistance > navMeshAgent.stoppingDistance)
         {
-            
             animator.SetBool("IsMoving", true);
         }
         else
@@ -55,5 +58,4 @@ public class Юнит : MonoBehaviour,IDamageable
             animator.SetBool("IsMoving", false);
         }
     }
-
 }

@@ -12,51 +12,64 @@ public class AttackController  : MonoBehaviour
 
     public bool isPlayer;
     public bool isEnemy;
-
+    [SerializeField] private LayerMask ignoreLayers;
     public int unitDamage;
 
+    private bool ShouldIgnoreTarget(Collider target)
+    {
+        // 1. Проверка слоя (игнорируем Preview)
+        if (ignoreLayers == (ignoreLayers | (1 << target.gameObject.layer)))
+            return true;
+
+        // 2. Дополнительная проверка для недостроенных зданий
+        Constructable constructable = target.GetComponent<Constructable>();
+        if (constructable != null && !constructable.IsConstructed)
+            return true;
+
+        return false;
+    }
 
     private void OnTriggerEnter(Collider other)
     {
+        if (ShouldIgnoreTarget(other)) return;
+
         if (isPlayer && other.CompareTag("Enemy") && targetToAttack == null)
         {
             targetToAttack = other.transform;
         }
-        if (isEnemy && (other.CompareTag("Ally")|| other.CompareTag("AllyBuilding")) && targetToAttack == null)
+        if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
         {
             targetToAttack = other.transform;
         }
     }
+
     private void OnTriggerStay(Collider other)
     {
-        if (isPlayer && other.CompareTag("Enemy") && targetToAttack == null)
-        {
-            targetToAttack = other.transform;
-        }
+     if (ShouldIgnoreTarget(other)) return; // Добавлена проверка
 
-        if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
-        {
-            targetToAttack = other.transform;
-        }
-    }
-  
-    private void OnTriggerExit(Collider other)
+     if (isPlayer && other.CompareTag("Enemy") && targetToAttack == null)
     {
-        if(other.CompareTag("Enemy") && targetToAttack != null)
-        {
-            targetToAttack = null;
-
-        }
-
-        if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
-        {
-            targetToAttack = null;
-
-        }
-
-
+        targetToAttack = other.transform;
     }
-    public void SetIdleMaterial()
+    if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == null)
+    {
+        targetToAttack = other.transform;
+    }
+    }
+
+private void OnTriggerExit(Collider other)
+{
+    // Исправлено условие - убрана проверка targetToAttack == null
+    if (other.CompareTag("Enemy") && targetToAttack == other.transform)
+    {
+        targetToAttack = null;
+    }
+    if (isEnemy && (other.CompareTag("Ally") || other.CompareTag("AllyBuilding")) && targetToAttack == other.transform)
+    {
+        targetToAttack = null;
+    }
+}
+public void SetIdleMaterial()
     {
        // GetComponent<Renderer>().material = idleStateMaterial;
     }

@@ -29,7 +29,7 @@ public class UnitAttackState : StateMachineBehaviour
         if (attackController.targetToAttack != null && animator.transform.GetComponent<ПеремещениеЮнит>().isCommandedToMove == false)
         {
             LookAtTarget();
-            //перемещение при атаке(мб понадобится)
+            //перемещение при атаке(может понадобится)
             //agent.SetDestination(attackController.targetToAttack.position);
 
             if(attackTimer <= 0) 
@@ -65,20 +65,17 @@ public class UnitAttackState : StateMachineBehaviour
 
     private void Attack()
     {
+        if (attackController.targetToAttack == null) return;
 
-        var damageToInflict = attackController.unitDamage;
-
-        SoundManager.Instance.PlaySoldierAttackSound();
-
+        Debug.Log($"Атака по цели: {attackController.targetToAttack.name}");
 
         var damageable = attackController.targetToAttack.GetComponent<IDamageable>();
-        if (damageable != null) 
+        if (damageable != null)
         {
-            damageable.TakeDamage(damageToInflict);
+            Debug.Log($"Наносится урон: {attackController.unitDamage}");
+            damageable.TakeDamage(attackController.unitDamage);
         }
-
     }
-   
 
 
     private void LookAtTarget()

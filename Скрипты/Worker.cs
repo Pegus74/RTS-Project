@@ -1,123 +1,130 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
+
+
 
 public class Worker : MonoBehaviour
 {
+
+    #region Serialized Fields
     [Header("Assignments")]
-    public Transform assignedNode;
-    public Transform supplyCenter;
-    public float harvestAmountPerSecond = 1f;
-    public float maxCapacity = 10f;
-    public float currentCapacity = 0f;
+    [SerializeField] public Transform assignedNode;
+    [SerializeField] public Transform supplyCenter;
+    [SerializeField] private float harvestAmountPerSecond = 1f;
+    [SerializeField] private float maxCapacity = 10f;
+    [SerializeField] private float currentCapacity = 0f;
 
     [Header("Visual Settings")]
-    public GameObject defaultModel;       
-    public GameObject carryingModel;      
-    public float modelSwitchDelay = 0.5f; 
+    [SerializeField] private GameObject defaultModel;
+    [SerializeField] private GameObject carryingModel;
+    [SerializeField] private float modelSwitchDelay = 0.5f;
 
     [Header("Construction Settings")]
-    public float constructionSpeed = 1.5f;
+    [SerializeField] private float constructionSpeed = 1.5f;
 
-    private UnityEngine.AI.NavMeshAgent agent;
+
+   
+    #endregion
+
+    #region Private Fields
+    private NavMeshAgent agent;
     private Animator animator;
     private bool isDepositing = false;
-   public Constructable currentConstruction;
+    private Constructable currentConstruction;
     private Coroutine modelSwitchCoroutine;
 
-    void Awake()
+    #endregion
+
+    #region Unity Lifecycle
+    private void Awake()
     {
-        agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
-        animator = GetComponent<Animator>();
+        InitializeComponents();
         InitializeModels();
     }
 
-    void InitializeModels()
+    private void Update()
     {
-        if (defaultModel != null) defaultModel.SetActive(true);
-        if (carryingModel != null) carryingModel.SetActive(false);
+        UpdateState();
     }
 
-    void Update()
+    private void OnTriggerEnter(Collider other)
     {
-        UpdateAnimatorParameters();
-        CheckNodeDepletion();
-        AutoSwitchModelWhenFull();
+        HandleTriggerEnter(other);
     }
 
-    void UpdateAnimatorParameters()
+    private void OnTriggerExit(Collider other)
     {
-        animator.SetBool("hasAssignedNode", assignedNode != null);
-        animator.SetBool("isFull", currentCapacity >= maxCapacity);
+        HandleTriggerExit(other);
+    }
+    #endregion
+
+    #region Initialization
+    private void InitializeComponents()
+    {
+        agent = GetComponent<NavMeshAgent>();
+        animator = GetComponent<Animator>();
     }
 
-    void CheckNodeDepletion()
+    private void InitializeModels()
     {
-        if (assignedNode != null && assignedNode.GetComponent<ResourceNode>().IsDepleted)
+        SetModelActive(defaultModel, true);
+        SetModelActive(carryingModel, false);
+    }
+    #endregion
+
+    #region Core Gameplay Logic
+    private void UpdateState()
+    {
+        if (!IsInManualMode()) // Автономный режим
         {
-            assignedNode = null;
-            animator.SetBool("hasAssignedNode", false);
+            UpdateAnimatorParameters();
+            CheckNodeDepletion();
+            HandleFullCapacity();
         }
     }
 
-    void AutoSwitchModelWhenFull()
+    private void HandleFullCapacity()
     {
         if (currentCapacity >= maxCapacity && !isDepositing)
         {
-            DepositResources();
+            animator.SetTrigger("goToDeposit");
+            MoveTo(supplyCenter); // Добавляем явное перемещение к складу
         }
     }
+    #endregion
 
-    public void StartHelpingConstruction(Constructable construction)
-    {
-        if (construction == null) return;
-
-        currentConstruction = construction;
-        animator.SetBool("IsConstructing", true);
-
-        if (agent != null)
-        {
-            agent.isStopped = true;
-            agent.ResetPath();
-        }
-    }
-
-    public void StopHelpingConstruction()
-    {
-        currentConstruction = null;
-        animator.SetBool("IsConstructing", false);
-        if (agent != null) agent.isStopped = false;
-    }
-
-    public void MoveTo(Transform target)
-    {
-        if (target == null || agent == null) return;
-        agent.SetDestination(target.position);
-        SwitchModel(false); 
-    }
-
+    #region Resource Handling
     public void Harvest()
     {
         if (assignedNode == null) return;
 
-        ResourceNode node = assignedNode.GetComponent<ResourceNode>();
-        if (node != null && !node.IsDepleted)
+        var node = assignedNode.GetComponent<ResourceNode>();
+        if (node == null || node.IsDepleted) return;
+
+        node.Harvest(harvestAmountPerSecond * Time.deltaTime);
+        float newCapacity = currentCapacity + harvestAmountPerSecond * Time.deltaTime;
+
+        // Включаем модель с ресурсами при достижении максимальной вместимости
+        if (newCapacity >= maxCapacity && currentCapacity < maxCapacity)
         {
-            node.Harvest(harvestAmountPerSecond * Time.deltaTime);
-            currentCapacity = Mathf.Min(currentCapacity + harvestAmountPerSecond * Time.deltaTime, maxCapacity);
+            SwitchModel(true);
         }
+
+        currentCapacity = Mathf.Min(newCapacity, maxCapacity);
     }
 
     public void DepositResources()
     {
-        if (isDepositing) return;
+        if (isDepositing || !animator.GetBool("atSupply")) return;
 
         isDepositing = true;
-        SwitchModel(true); 
+        // Модель уже должна быть carryingModel (переключилась при заполнении)
         StartCoroutine(DepositProcess());
     }
 
-    IEnumerator DepositProcess()
+    private IEnumerator DepositProcess()
     {
         float tempCapacity = currentCapacity;
 
@@ -127,18 +134,103 @@ public class Worker : MonoBehaviour
             yield return null;
         }
 
-        ResourceManager.Instance.IncreaseResource(ResourceManager.ResourcesType.Gold, (int)tempCapacity * 10);
+        CompleteDeposit(tempCapacity);
+    }
+
+    private void CompleteDeposit(float depositedAmount)
+    {
+        ResourceManager.Instance.IncreaseResource(ResourceManager.ResourcesType.Gold, (int)depositedAmount * 10);
         isDepositing = false;
+
+        // Возвращаем обычную модель после полной сдачи
+        SwitchModel(false);
 
         if (assignedNode != null)
         {
             animator.SetTrigger("doneDepositing");
         }
+    }
+    #endregion
 
-        SwitchModel(false); 
+    #region Movement & Construction
+    public void MoveTo(Transform target)
+    {
+        if (target == null || agent == null) return;
+
+        // Если рабочий выделен и цель не склад/шахта - разрешаем ручное управление
+        if (IsInManualMode() && target != supplyCenter && target != assignedNode)
+        {
+            agent.SetDestination(target.position);
+        }
+        else if (!IsInManualMode()) // Автономное перемещение
+        {
+            agent.SetDestination(target.position);
+        }
     }
 
-    void SwitchModel(bool isCarrying)
+    public void StartHelpingConstruction(Constructable construction)
+    {
+        if (construction == null) return;
+
+        // Прерываем текущие действия, но сохраняем ресурсы
+        if (isDepositing)
+        {
+            StopCoroutine(DepositProcess());
+            isDepositing = false;
+        }
+
+        // Останавливаем движение, но не сбрасываем ресурсы
+        currentConstruction = construction;
+        animator.SetBool("IsConstructing", true);
+        StopMovement();
+    }
+
+    public void StopHelpingConstruction()
+    {
+        if (currentConstruction == null) return;
+
+        currentConstruction = null;
+        animator.SetBool("IsConstructing", false);
+        ResumeMovement();
+
+        // Возвращаемся к логике в зависимости от текущего состояния
+        if (currentCapacity >= maxCapacity)
+        {
+            // Если полный - идем сдавать
+            animator.SetTrigger("goToDeposit");
+        }
+        else if (currentCapacity > 0 && assignedNode == null)
+        {
+            // Если есть ресурсы, но нет узла - идем сдавать
+            animator.SetTrigger("goToDeposit");
+        }
+        else if (assignedNode != null)
+        {
+            // Если есть назначенный узел - продолжаем сбор
+            animator.SetTrigger("continueHarvesting");
+        }
+    }
+
+    private void StopMovement()
+    {
+        if (agent != null)
+        {
+            agent.isStopped = true;
+            agent.ResetPath();
+        }
+    }
+
+    private void ResumeMovement()
+    {
+        if (agent != null)
+        {
+            agent.isStopped = false;
+        }
+    }
+    #endregion
+
+    #region Model Management
+    private void SwitchModel(bool isCarrying)
     {
         if (modelSwitchCoroutine != null)
         {
@@ -147,15 +239,24 @@ public class Worker : MonoBehaviour
         modelSwitchCoroutine = StartCoroutine(SwitchModelWithDelay(isCarrying));
     }
 
-    IEnumerator SwitchModelWithDelay(bool isCarrying)
+    private IEnumerator SwitchModelWithDelay(bool isCarrying)
     {
         yield return new WaitForSeconds(modelSwitchDelay);
-
-        if (defaultModel != null) defaultModel.SetActive(!isCarrying);
-        if (carryingModel != null) carryingModel.SetActive(isCarrying);
+        SetModelActive(defaultModel, !isCarrying);
+        SetModelActive(carryingModel, isCarrying);
     }
 
-    private void OnTriggerEnter(Collider other)
+    private void SetModelActive(GameObject model, bool active)
+    {
+        if (model != null)
+        {
+            model.SetActive(active);
+        }
+    }
+    #endregion
+
+    #region Trigger Handling
+    private void HandleTriggerEnter(Collider other)
     {
         if (assignedNode != null && other.transform == assignedNode)
         {
@@ -167,7 +268,7 @@ public class Worker : MonoBehaviour
         }
     }
 
-    private void OnTriggerExit(Collider other)
+    private void HandleTriggerExit(Collider other)
     {
         if (assignedNode != null && other.transform == assignedNode)
         {
@@ -178,13 +279,36 @@ public class Worker : MonoBehaviour
             animator.SetBool("atSupply", false);
         }
     }
+    #endregion
+
+    #region State Checks
+    private void UpdateAnimatorParameters()
+    {
+        animator.SetBool("hasAssignedNode", assignedNode != null);
+        animator.SetBool("isFull", currentCapacity >= maxCapacity);
+    }
+
+    private void CheckNodeDepletion()
+    {
+        if (assignedNode == null) return;
+
+        var node = assignedNode.GetComponent<ResourceNode>();
+        if (node != null && node.IsDepleted)
+        {
+            assignedNode = null;
+            animator.SetBool("hasAssignedNode", false);
+        }
+    }
 
     public bool IsAvailableForConstruction()
     {
-        return currentConstruction == null
-            && assignedNode == null
-            && !isDepositing
-            && agent != null
-            && agent.isActiveAndEnabled;
+        return agent != null && agent.isActiveAndEnabled;
+    }
+    #endregion
+    public bool IsInManualMode()
+    {
+        // Если рабочий выделен и получил команду (например, на строительство)
+        return ВыборЮнитов.Instance.unitsSelected.Contains(gameObject) &&
+          (currentConstruction != null || agent.hasPath && !isDepositing);
     }
 }
